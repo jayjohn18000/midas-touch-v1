@@ -1,6 +1,6 @@
 import os
 os.makedirs('results', exist_ok=True)
-apt import pandas as pd
+import pandas as pd
 from strategies.sma_crossover import sma_crossover_strategy
 from backtester.engine import backtest
 
