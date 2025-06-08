@@ -9,5 +9,5 @@ end_date = "2025-05-01"
 df = yf.download(symbol, start=start_date, end=end_date)
 
 # 💾 Save to CSV
-df.to_csv("data/historical.csv")
+df.to_csv("data/historical.csv", index-TRUE)
 print(f"✅ Saved {symbol} data to data/historical.csv")
