@@ -1,0 +1,8 @@
+Trading Pair, Base / Quote, 30d Correlation with BTC, 30d Volatility (annualized), Avg Daily Volume (USD), Category
+BTC/USD, Bitcoin / Tether, +1.00 (by definition), ~55%, ~$20B+, Major
+ETH/USD, Ether / Tether, +0.5 (moderate), ~65%, ~$10B+, Major
+ETH/BTC, Ether / Bitcoin, ~0.05 (near zero):contentReference[oaicite:20]{index=20}, ~40%, ~$5B, Major (cross of top coins)
+BNB/BTC, Binance Coin / Bitcoin, +0.8 (high), ~50%, ~$1B, Major
+LTC/BTC, Litecoin / Bitcoin, +0.6 (moderate), ~60%, ~$300M, Major
+BNB/ETH, Binance Coin / Ether, +0.2 (low), ~30%, ~$10M, Alt/Alt
+SOL/ETH, Solana / Ether, +0.2 (low), ~40%, ~$5M, Alt/Alt
