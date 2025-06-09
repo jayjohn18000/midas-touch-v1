@@ -6,6 +6,7 @@ from run_backtest import run_backtest
 from strategies.sma_crossover import sma_crossover_strategy
 import re
 from data.soapy_symbols import clean_crypto_pairs, clean_crypto_public, clean_quant_public
+import csv  # Ensure this is imported at the top
 
 # Map strategy names to functions (for future extensibility)
 strategy_map = {
@@ -38,6 +39,7 @@ def main():
 
     os.makedirs("results/equity_curves", exist_ok=True)
     summary = []
+    # Auto-clear failures.csv at the start of the run
 
     for symbol in symbols:
         try:
@@ -46,11 +48,10 @@ def main():
 
             # ✅ Skip symbol if data fetch failed or is invalid
             if df is None:
-                print(f"⚠️ Skipping {symbol} due to missing or invalid data.")
-                continue
+                raise ValueError(f"Failed or invalid data return for {symbol}")
 
             strategy_fn = strategy_map[args.strategy]
-            result_df = run_backtest(
+            result_df, metrics = run_backtest(
                 symbol=symbol,
                 strategy_fn=strategy_fn,
                 strategy_name=args.strategy,
@@ -58,10 +59,9 @@ def main():
                 long=args.long,
                 save_path=f"results/equity_curves/{symbol}.csv"
             )
-            if result_df.empty or 'Equity' not in result_df.columns:
-                print(f"⚠️ Skipping {symbol} — no valid backtest results.")
-                continue
-
+            if result_df is None or result_df.empty or 'Equity' not in result_df.columns:
+                raise ValueError(f"No data returned for {symbol}")
+                
             final_equity = result_df['Equity'].iloc[-1]
             start_equity = result_df['Equity'].iloc[0]
             pct_return = round((final_equity - start_equity) / start_equity * 100, 2)
@@ -69,12 +69,20 @@ def main():
             summary.append({
                 "Symbol": symbol,
                 "Strategy": args.strategy,
-                "Final Equity": round(final_equity, 2),
-                "Percent Return": pct_return
+                **metrics
             })
 
         except Exception as e:
             print(f"❌ Error on {symbol}: {e}")
+
+            failures_path = "results/failures.csv"
+            os.makedirs("results", exist_ok=True)
+            with open(failures_path, "a", newline="") as f:
+                writer = csv.writer(f)
+                if f.tell() == 0:  # Write header if file is empty
+                    writer.writerow(["Symbol", "Error"])
+                writer.writerow([symbol, str(e)])
+
 
     if summary:
         pd.DataFrame(summary).to_csv("results/summary.csv", index=False)

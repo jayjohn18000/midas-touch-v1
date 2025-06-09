@@ -16,10 +16,17 @@ def run_backtest(symbol: str, strategy_fn, strategy_name: str, short=2, long=3, 
     # Load historical data
     df = pd.read_csv(data_path, parse_dates=["Date"])
     df = strategy_fn(df.copy(), short=short, long=long)
-    results = backtest(df)
+    results, metrics = backtest(df)
+    print(metrics)
 
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
     results.to_csv(save_path, index=False)
 
     print(f"✅ Backtest complete. Results saved to {save_path}")
-    return results  # return the DataFrame for summary tracking
+    return results, metrics  # return the DataFrame for summary tracking
+
+if __name__ == "__main__":
+    run_backtest("SOL-ETH", sma_crossover_strategy, "sma_crossover")
+
+
+
