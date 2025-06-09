@@ -6,7 +6,8 @@ from run_backtest import run_backtest
 from strategies.sma_crossover import sma_crossover_strategy
 import re
 from data.soapy_symbols import clean_crypto_pairs, clean_crypto_public, clean_quant_public
-import csv  # Ensure this is imported at the top
+import csv
+from multiprocessing import Pool, cpu_count
 
 # Map strategy names to functions (for future extensibility)
 strategy_map = {
@@ -24,6 +25,37 @@ def load_symbols_from_csv():
     )
     return sorted(tickers)
 
+def run_single_backtest(symbol):
+    try:
+        strategy_fn = strategy_map["sma_crossover"]
+        df = fetch_data(symbol)
+        if df is None or df.empty:
+            raise ValueError("No valid data")
+
+        results, metrics = run_backtest(
+            symbol=symbol,
+            strategy_fn=strategy_fn,
+            strategy_name="sma_crossover",
+            short=2,
+            long=3,
+            save_path=f"results/equity_curves/{symbol}.csv"
+        )
+
+        if results is None or results.empty or 'Equity' not in results.columns:
+            raise ValueError("Backtest returned no usable results")
+
+        return {
+            "Symbol": symbol,
+            "Strategy": "sma_crossover",
+            **metrics
+        }
+
+    except Exception as e:
+        print(f"❌ Error on {symbol}: {e}")
+        return {
+            "Symbol": symbol,
+            "Error": str(e)
+        }
 
 def main():
     parser = argparse.ArgumentParser(description="Backtest one symbol or run batch.")
@@ -36,57 +68,33 @@ def main():
     args = parser.parse_args()
 
     symbols = [args.symbol] if args.symbol else load_symbols_from_csv()
-
     os.makedirs("results/equity_curves", exist_ok=True)
-    summary = []
-    # Auto-clear failures.csv at the start of the run
 
-    for symbol in symbols:
-        try:
-            print(f"📈 Processing {symbol}...")
-            df = fetch_data(symbol, start_date=args.start, end_date=args.end)
+    # Auto-clear failures.csv
+    failures_path = "results/failures.csv"
+    with open(failures_path, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["Symbol", "Error"])
 
-            # ✅ Skip symbol if data fetch failed or is invalid
-            if df is None:
-                raise ValueError(f"Failed or invalid data return for {symbol}")
+    # Run in parallel
+    print(f"🚀 Running backtests on {len(symbols)} symbols using {min(cpu_count(), 4)} cores...")
+    with Pool(processes=min(cpu_count(), 4)) as pool:
+        results = pool.map(run_single_backtest, symbols)
 
-            strategy_fn = strategy_map[args.strategy]
-            result_df, metrics = run_backtest(
-                symbol=symbol,
-                strategy_fn=strategy_fn,
-                strategy_name=args.strategy,
-                short=args.short,
-                long=args.long,
-                save_path=f"results/equity_curves/{symbol}.csv"
-            )
-            if result_df is None or result_df.empty or 'Equity' not in result_df.columns:
-                raise ValueError(f"No data returned for {symbol}")
-                
-            final_equity = result_df['Equity'].iloc[-1]
-            start_equity = result_df['Equity'].iloc[0]
-            pct_return = round((final_equity - start_equity) / start_equity * 100, 2)
-
-            summary.append({
-                "Symbol": symbol,
-                "Strategy": args.strategy,
-                **metrics
-            })
-
-        except Exception as e:
-            print(f"❌ Error on {symbol}: {e}")
-
-            failures_path = "results/failures.csv"
-            os.makedirs("results", exist_ok=True)
-            with open(failures_path, "a", newline="") as f:
-                writer = csv.writer(f)
-                if f.tell() == 0:  # Write header if file is empty
-                    writer.writerow(["Symbol", "Error"])
-                writer.writerow([symbol, str(e)])
-
+    # Split successes and failures
+    summary = [r for r in results if "Error" not in r]
+    failures = [r for r in results if "Error" in r]
 
     if summary:
         pd.DataFrame(summary).to_csv("results/summary.csv", index=False)
         print("✅ Summary saved to results/summary.csv")
+
+    if failures:
+        with open(failures_path, "a", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=["Symbol", "Error"])
+            for row in failures:
+                writer.writerow(row)
+        print("⚠️ Failures saved to results/failures.csv")
 
 if __name__ == "__main__":
     main()
