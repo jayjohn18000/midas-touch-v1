@@ -1,3 +1,5 @@
-Symbol,Error
-GLXY,No valid data
-SQ,No valid data
+Symbol,Strategy,Error
+GLXY,sma_crossover,No valid data
+SQ,sma_crossover,No valid data
+GLXY,rsi,No valid data
+SQ,rsi,No valid data
