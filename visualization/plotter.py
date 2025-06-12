@@ -3,33 +3,41 @@ import pandas as pd
 import plotly.express as px
 
 
-def plot_equity_curve(file_path, save=False, output_dir="figures"):
+def plot_equity_curve(file_path, strategy="sma_crossover", save=False, output_dir="figures"):
     df = pd.read_csv(file_path, parse_dates=["Date"])
     symbol = os.path.basename(file_path).replace(".csv", "")
 
-    fig = px.line(df, x="Date", y="Equity", title=f"Equity Curve - {symbol}", labels={"Equity": "Equity ($)"})
+    fig = px.line(
+        df,
+        x="Date",
+        y="Equity",
+        title=f"Equity Curve - {symbol} ({strategy})",
+        labels={"Equity": "Equity ($)"}
+    )
     fig.update_layout(template="plotly_white")
 
     if save:
         os.makedirs(output_dir, exist_ok=True)
-        save_path = f"{output_dir}/equity_curve_{symbol}.png"
+        save_path = f"{output_dir}/equity_curve_{symbol}_{strategy}.png"
         fig.write_image(save_path)
-        fig.show()
         print(f"📸 Saved Plotly figure to {save_path}")
 
     fig.show()
 
 
-def plot_summary_bar(csv_file="results/summary_all.csv", metric="Percent Return", save=False, output_dir="figures"):
+def plot_summary_bar(strategy="sma_crossover", csv_file=None, metric="Percent Return", save=False, output_dir="figures"):
+    if csv_file is None:
+        csv_file = f"results/summary_{strategy}.csv"
+
     df = pd.read_csv(csv_file)
     df = df.sort_values(metric, ascending=False)
 
-    fig = px.bar(df, x="Symbol", y=metric, title=f"{metric} by Symbol", labels={metric: metric})
+    fig = px.bar(df, x="Symbol", y=metric, title=f"{metric} by Symbol ({strategy})", labels={metric: metric})
     fig.update_layout(xaxis_tickangle=-45, template="plotly_white")
 
     if save:
         os.makedirs(output_dir, exist_ok=True)
-        save_path = f"{output_dir}/summary_{metric.replace(' ', '_')}.png"
+        save_path = f"{output_dir}/summary_{strategy}_{metric.replace(' ', '_')}.png"
         fig.write_image(save_path)
         print(f"📸 Saved Plotly figure to {save_path}")
 
