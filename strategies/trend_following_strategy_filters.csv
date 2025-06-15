@@ -1,0 +1,17 @@
+Category,Filter,Purpose
+Price-Based,Price above/below 200-day SMA,Filters trades in the direction of long-term trend
+Price-Based,Donchian Channel Breakout,Enter on highest high or lowest low of X periods
+Price-Based,Break of recent swing high/low,Confirms change in price structure
+Momentum,RSI filter (e.g. RSI > 50),Confirms bullish/bearish momentum
+Momentum,Rate of Change (ROC),Measures speed of price change
+Volatility,Bollinger Band Width > X,Market must be expanded and trending
+Volatility,Choppiness Index,Measures sideways movement to avoid choppy markets
+Volatility,Low ATR filter,"Avoid narrow, compressed market conditions"
+Volume,Avg Daily Volume > X,Trade only liquid tickers
+Volume,Dollar Volume = Price × Volume,Avoids microcaps or illiquid assets
+Regime,VIX Level,Avoid trades during excessive volatility
+Regime,"Macro Filter (e.g., Fed trend)",Trade trends during favorable macro conditions
+Regime,Seasonal/Time-of-Day Filter,Trade during statistically favorable time windows
+Custom,Machine Learning Classifier,Predicts trade quality based on historical patterns
+Custom,News Sentiment Filter,Avoid trades with negative sentiment news
+Custom,Market Internals,Use breadth or sector strength to confirm trend quality
