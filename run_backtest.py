@@ -1,3 +1,4 @@
+
 import os
 import pandas as pd
 import backtrader as bt
@@ -25,48 +26,46 @@ def run_backtest(symbol: str, strategy_class, strategy_name: str, save_path=None
         cerebro = bt.Cerebro()
         cerebro.addstrategy(strategy_class, **kwargs)
         cerebro.adddata(data)
-        cerebro.broker.set_cash(100000)
+        start_equity = 100000
+        cerebro.broker.set_cash(start_equity)
         cerebro.addanalyzer(bt.analyzers.SharpeRatio, _name='sharpe')
-        cerebro.addanalyzer(bt.analyzers.PyFolio, _name='pyfolio')
         cerebro.addanalyzer(bt.analyzers.TradeAnalyzer, _name='trades')
+        cerebro.addanalyzer(bt.analyzers.DrawDown, _name='drawdown')
 
         results = cerebro.run()
         strat = results[0]
 
-        # Print metrics
-        print("📈 Final Portfolio Value:", cerebro.broker.getvalue())
-        print("📊 Sharpe Ratio:", strat.analyzers.sharpe.get_analysis())
-        print("📊 Trade Analysis:", strat.analyzers.trades.get_analysis())
+        end_equity = cerebro.broker.getvalue()
+        percent_return = ((end_equity - start_equity) / start_equity) * 100
 
-        # Optional: save performance curve (requires some custom logic)
-        cerebro.plot()
+        trades = strat.analyzers.trades.get_analysis()
+        total_trades = trades.total.total if trades.total and trades.total.total else 0
+        win_trades = trades.won.total if trades.won and trades.won.total else 0
+        win_rate = (win_trades / total_trades) * 100 if total_trades > 0 else 0
 
-        return results
+        sharpe = strat.analyzers.sharpe.get_analysis()
+        sharpe_ratio = sharpe.get("sharperatio", 0)
+
+        drawdown = strat.analyzers.drawdown.get_analysis()
+        max_drawdown = drawdown.get("max", {}).get("drawdown", 0)
+
+        metrics = {
+            "Start Equity": round(start_equity, 2),
+            "End Equity": round(end_equity, 2),
+            "Percent Return": round(percent_return, 2),
+            "Total Trades": total_trades,
+            "Win Rate": round(win_rate, 2),
+            "Sharpe Ratio": round(sharpe_ratio, 2),
+            "Max Drawdown": round(max_drawdown, 2)
+        }
+
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+
+        print("📈 Final Portfolio Value:", end_equity)
+        print("📊 Metrics:", metrics)
+
+        return results, metrics
 
     except Exception as e:
         print(f"❌ Error during backtest of {symbol}: {e}")
-        return None
-
-# Example usage
-if __name__ == "__main__":
-    import argparse
-    from strategies.pnshoot_strategy import PNShoot
-
-    strategy_map = {
-        "pnshoot": PNShoot
-    }
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--strategy", type=str, required=True)
-    parser.add_argument("--symbol", type=str, required=True)
-    parser.add_argument("--start", type=str, required=True)
-    parser.add_argument("--end", type=str, required=True)
-    args = parser.parse_args()
-
-    run_backtest(
-        symbol=args.symbol,
-        strategy_class=strategy_map[args.strategy],
-        strategy_name=args.strategy,
-        start=args.start,
-        end=args.end
-    )
+        return None, {}

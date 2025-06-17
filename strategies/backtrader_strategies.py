@@ -1,7 +1,57 @@
 
 import backtrader as bt
 
-class PNShoot(bt.Strategy):
+class SMACrossoverStrategy(bt.Strategy):
+    params = dict(short=5, long=20)
+
+    def __init__(self):
+        self.sma_short = bt.indicators.SMA(self.data.close, period=self.p.short)
+        self.sma_long = bt.indicators.SMA(self.data.close, period=self.p.long)
+        self.crossover = bt.indicators.CrossOver(self.sma_short, self.sma_long)
+        self.order = None
+
+    def next(self):
+        if self.order:
+            return
+
+        if not self.position:
+            if self.crossover > 0:
+                self.order = self.buy()
+        elif self.crossover < 0:
+            self.order = self.close()
+
+    def notify_order(self, order):
+        if order.status in [order.Submitted, order.Accepted]:
+            return
+        if order.status in [order.Completed, order.Canceled, order.Margin, order.Rejected]:
+            self.order = None
+
+
+class RSIStrategy(bt.Strategy):
+    params = dict(period=14, lower=30, upper=70)
+
+    def __init__(self):
+        self.rsi = bt.indicators.RSI(self.data.close, period=self.p.period)
+        self.order = None
+
+    def next(self):
+        if self.order:
+            return
+
+        if not self.position:
+            if self.rsi < self.p.lower:
+                self.order = self.buy()
+        elif self.rsi > self.p.upper:
+            self.order = self.close()
+
+    def notify_order(self, order):
+        if order.status in [order.Submitted, order.Accepted]:
+            return
+        if order.status in [order.Completed, order.Canceled, order.Margin, order.Rejected]:
+            self.order = None
+
+
+class PNShootStrategy(bt.Strategy):
     params = dict(
         fast_period=20,
         slow_period=50,
