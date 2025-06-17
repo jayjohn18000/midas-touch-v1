@@ -1,6 +1,7 @@
+
 import backtrader as bt
 
-class pNshoot(bt.Strategy):
+class PNShoot(bt.Strategy):
     params = dict(
         fast_period=20,
         slow_period=50,
@@ -13,7 +14,7 @@ class pNshoot(bt.Strategy):
     )
 
     def __init__(self):
-        # Indicators
+        self.order = None  # to keep track of pending orders
         self.sma_fast = bt.indicators.SMA(self.data.close, period=self.p.fast_period)
         self.sma_slow = bt.indicators.SMA(self.data.close, period=self.p.slow_period)
         self.adx = bt.indicators.ADX(self.data, period=self.p.adx_period)
@@ -21,28 +22,34 @@ class pNshoot(bt.Strategy):
         self.volume_sma = bt.indicators.SMA(self.data.volume, period=self.p.volume_period)
         self.crossover = bt.indicators.CrossOver(self.sma_fast, self.sma_slow)
 
+    def log(self, txt):
+        dt = self.datas[0].datetime.date(0)
+        print(f'{dt.isoformat()}, {txt}')
+
     def next(self):
+        if self.order:
+            return  # waiting for pending order
+
         if self.position:
-            # Optional exit conditions: Crossover reversal or ADX weakness
+            # Optional exit: if trend weakens or crossover reverses
             if self.crossover < 0 or self.adx[0] < 20:
-                self.close()
+                self.log(f'CLOSE: {self.data.close[0]}')
+                self.order = self.close()
             return
 
-        # Long entry condition
-        if (self.crossover > 0 and 
-            self.adx[0] > self.p.adx_threshold and 
-            self.data.volume[0] > self.volume_sma[0]):
-            self.buy()
+        if self.crossover > 0 and self.adx[0] > self.p.adx_threshold and self.data.volume[0] > self.volume_sma[0]:
+            self.log(f'BUY: {self.data.close[0]}')
+            self.order = self.buy()
 
-        # Short entry condition
-        elif (self.crossover < 0 and 
-              self.adx[0] > self.p.adx_threshold and 
-              self.data.volume[0] > self.volume_sma[0]):
-            self.sell()
+        elif self.crossover < 0 and self.adx[0] > self.p.adx_threshold and self.data.volume[0] > self.volume_sma[0]:
+            self.log(f'SELL: {self.data.close[0]}')
+            self.order = self.sell()
 
-# Save to file
-file_path = "/mnt/data/pnshoot_strategy.py"
-with open(file_path, "w") as f:
-    f.write(pnshoot_code)
-
-file_path
+    def notify_order(self, order):
+        if order.status in [order.Submitted, order.Accepted]:
+            return
+        if order.status in [order.Completed]:
+            self.log(f'ORDER EXECUTED at {order.executed.price}')
+        elif order.status in [order.Canceled, order.Margin, order.Rejected]:
+            self.log('Order Canceled/Margin/Rejected')
+        self.order = Nonea

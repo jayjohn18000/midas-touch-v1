@@ -1,38 +1,72 @@
 import os
 import pandas as pd
-from backtester.engine import backtest
+import backtrader as bt
+from datetime import datetime
 
-def run_backtest(symbol: str, strategy_fn, strategy_name: str, save_path=None, **kwargs):
+def run_backtest(symbol: str, strategy_class, strategy_name: str, save_path=None, **kwargs):
     safe_symbol = symbol.replace("-", "_").replace("/", "_")
     data_path = f"data/historical_{safe_symbol}.csv"
 
     if save_path is None:
         save_path = f"results/equity_curve_{safe_symbol}_{strategy_name}.csv"
 
-    print(f"📊 Running backtest for {symbol} using {strategy_name} strategy...")
+    print(f"📊 Running Backtrader backtest for {symbol} using {strategy_name} strategy...")
 
     try:
-        # Load historical data
+        # Load data
         df = pd.read_csv(data_path, parse_dates=["Date"])
-        
-        # Call the strategy function with appropriate kwargs
-        df = strategy_fn(df.copy(), **kwargs)
+        df = df.rename(columns=str.lower)  # Backtrader prefers lowercase
+        df = df.set_index("date")
 
-        # Run backtest
-        results, metrics = backtest(df)
-        print(metrics)
+        # Create Backtrader data feed
+        data = bt.feeds.PandasData(dataname=df)
 
-        os.makedirs(os.path.dirname(save_path), exist_ok=True)
-        results.to_csv(save_path, index=False)
+        # Initialize Backtrader engine
+        cerebro = bt.Cerebro()
+        cerebro.addstrategy(strategy_class, **kwargs)
+        cerebro.adddata(data)
+        cerebro.broker.set_cash(100000)
+        cerebro.addanalyzer(bt.analyzers.SharpeRatio, _name='sharpe')
+        cerebro.addanalyzer(bt.analyzers.PyFolio, _name='pyfolio')
+        cerebro.addanalyzer(bt.analyzers.TradeAnalyzer, _name='trades')
 
-        print(f"✅ Backtest complete. Results saved to {save_path}")
-        return results, metrics
+        results = cerebro.run()
+        strat = results[0]
+
+        # Print metrics
+        print("📈 Final Portfolio Value:", cerebro.broker.getvalue())
+        print("📊 Sharpe Ratio:", strat.analyzers.sharpe.get_analysis())
+        print("📊 Trade Analysis:", strat.analyzers.trades.get_analysis())
+
+        # Optional: save performance curve (requires some custom logic)
+        cerebro.plot()
+
+        return results
 
     except Exception as e:
         print(f"❌ Error during backtest of {symbol}: {e}")
-        return None, {}
+        return None
 
-# Example test
+# Example usage
 if __name__ == "__main__":
-    from strategies.sma_crossover import sma_crossover_strategy
-    run_backtest("SOL-ETH", sma_crossover_strategy, "sma_crossover", short=2, long=3)
+    import argparse
+    from strategies.pnshoot_strategy import PNShoot
+
+    strategy_map = {
+        "pnshoot": PNShoot
+    }
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--strategy", type=str, required=True)
+    parser.add_argument("--symbol", type=str, required=True)
+    parser.add_argument("--start", type=str, required=True)
+    parser.add_argument("--end", type=str, required=True)
+    args = parser.parse_args()
+
+    run_backtest(
+        symbol=args.symbol,
+        strategy_class=strategy_map[args.strategy],
+        strategy_name=args.strategy,
+        start=args.start,
+        end=args.end
+    )

@@ -5,6 +5,7 @@ from fetch_data import fetch_data
 from run_backtest import run_backtest
 from strategies.sma_crossover import sma_crossover_strategy
 from strategies.rsi_strategy import rsi_strategy
+from strategies.pnshoot_strategy import PNShoot
 from data.soapy_symbols import clean_crypto_pairs, clean_crypto_public, clean_quant_public
 import re
 import csv
@@ -14,6 +15,7 @@ from multiprocessing import Pool, cpu_count
 strategy_map = {
     "sma_crossover": sma_crossover_strategy,
     "rsi": rsi_strategy,
+    "pnshoot" : PNShoot
 }
 
 def is_valid_ticker(ticker):

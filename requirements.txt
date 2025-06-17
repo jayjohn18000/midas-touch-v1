@@ -1,1 +1,29 @@
+# === Starter Dependencies ===
+backtrader
 pandas
+numpy
+matplotlib
+plotly
+yfinance
+ta
+mlflow
+requests
+jupyterlab
+ipykernel
+
+# === Advanced / Optional Modules ===
+sqlalchemy
+psycopg2-binary
+minio
+python-dotenv
+scikit-learn
+joblib
+boto3
+openpyxl
+tabulate
+pytest
+ccxt
+alpaca-trade-api
+backtrader-plotting
+streamlit
+dash
